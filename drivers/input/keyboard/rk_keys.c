@@ -37,8 +37,10 @@
 #include <linux/of_platform.h>
 #include <linux/rk_keys.h>
 
+//#include "../../znd/znd_common.h"
+
 #define EMPTY_DEFAULT_ADVALUE		1024
-#define DRIFT_DEFAULT_ADVALUE		70
+#define DRIFT_DEFAULT_ADVALUE		35 //70  //@S change tolerance to 35. 20181126
 #define INVALID_ADVALUE			-1
 #define EV_ENCALL			KEY_F4
 #define EV_MENU				KEY_F1
@@ -54,6 +56,11 @@
 #define ADC_SAMPLE_JIFFIES	(100 / (MSEC_PER_SEC / HZ))	/* 100ms */
 #define WAKE_LOCK_JIFFIES	(1 * HZ)			/* 1s */
 
+//---ian
+#define KEY_PRESS_STABLE_COUNT	(5L) 	// 50ms
+#define LONG_PRESS_COUNT	(200L)	// 2000ms
+#define VERY_LONG_PRESS_COUNT	(430L)	// 5000ms
+
 enum rk_key_type {
 	TYPE_GPIO = 1,
 	TYPE_ADC
@@ -63,6 +70,8 @@ struct rk_keys_button {
 	struct device *dev;
 	u32 type;		/* TYPE_GPIO, TYPE_ADC */
 	u32 code;		/* key code */
+	u32 code_long_press;	// key code for 2 sec
+	u32 code_very_long_press;	// key code for 5 sec
 	const char *desc;	/* key label */
 	u32 state;		/* key up & down state */
 	int gpio;		/* gpio only */
@@ -88,6 +97,7 @@ struct rk_keys_drvdata {
 };
 
 static struct input_dev *sinput_dev;
+static u32 long_press_count = 0;
 
 void rk_send_power_key(int state)
 {
@@ -121,32 +131,112 @@ static void keys_timer(unsigned long _data)
 	struct rk_keys_drvdata *pdata = dev_get_drvdata(button->dev);
 	struct input_dev *input = pdata->input;
 	int state;
+	static int long_press_status = 0;
+	
+	//if( znd_Is_BTN_disable() ) return;
 
-	if (button->type == TYPE_GPIO)
+	if (button->type == TYPE_GPIO) {
 		state = !!((gpio_get_value(button->gpio) ? 1 : 0) ^
 			   button->active_low);
-	else
+		
+		if (button->state != state) {
+			button->state = state;
+			input_event(input, EV_KEY, button->code, button->state);
+			key_dbg(pdata, "%skey[%s]: report event[%d] state[%d]\n",
+				button->type == TYPE_ADC ? "adc" : "gpio",
+				button->desc, button->code, button->state);
+			input_event(input, EV_KEY, button->code, button->state);
+			input_sync(input);
+		}
+
+		if (state)
+			mod_timer(&button->timer, jiffies + DEBOUNCE_JIFFIES);
+	}else{ //ADC key. 
 		state = !!button->adc_state;
 
-	if (button->state != state) {
-		button->state = state;
+		if(!state){	//released
+			long_press_count = 0;			
+			if( button->state != state && long_press_status == 1){
+				key_dbg(pdata, "%skey[%s]: report event[%d] released\n",
+					button->type == TYPE_ADC ? "adc" : "gpio",
+					button->desc, button->code);
+				input_event(input, EV_KEY, button->code, 1);
+				input_sync(input);
+				input_event(input, EV_KEY, button->code, 0);
+				input_sync(input);
+			}
+			long_press_status = 0;
+			button->state = state;				
+		} else if (button->state != state || long_press_status != 0){		// pressed
+			key_dbg(pdata, "%skey[%s]: report event[%d] state[%d]\n",
+				button->type == TYPE_ADC ? "adc" : "gpio",
+				button->desc, button->code, state);
+			if(long_press_count >= VERY_LONG_PRESS_COUNT && button->code_very_long_press>0 && long_press_status == 2){
+				key_dbg(pdata, "%skey[%s]: report event[%d] released\n",
+					button->type == TYPE_ADC ? "adc" : "gpio",
+					button->desc, button->code_very_long_press);
+				input_event(input, EV_KEY, button->code_very_long_press, 1);
+				input_sync(input);
+				input_event(input, EV_KEY, button->code_very_long_press, 0);
+				input_sync(input);
+				button->state = state;
+				long_press_status = 0;
+			}
+			else if( long_press_count >= LONG_PRESS_COUNT && button->code_long_press>0 && long_press_status == 1){
+				key_dbg(pdata, "%skey[%s]: report event[%d] released\n",
+					button->type == TYPE_ADC ? "adc" : "gpio",
+					button->desc, button->code_long_press);
+				input_event(input, EV_KEY, button->code_long_press, 1);
+				input_sync(input);
+				input_event(input, EV_KEY, button->code_long_press, 0);
+				input_sync(input);
+				button->state = state;
+				long_press_status = 2;
+			}
+			else if( long_press_count >= KEY_PRESS_STABLE_COUNT && long_press_status == 0){
+				button->state = state;
+				long_press_status = 1;
+			}
+			long_press_count++;
+			key_dbg(pdata, "ADC key press_count = %d\n", long_press_count);
+			mod_timer(&button->timer, jiffies + DEBOUNCE_JIFFIES);
+		}
+#if 0  //---ian:org		
 		input_event(input, EV_KEY, button->code, button->state);
 		key_dbg(pdata, "%skey[%s]: report event[%d] state[%d]\n",
 			button->type == TYPE_ADC ? "adc" : "gpio",
 			button->desc, button->code, button->state);
 		input_event(input, EV_KEY, button->code, button->state);
 		input_sync(input);
-	}
+#endif		
 
-	if (state)
+#if 0
+	if (state){
+		if( button->code_very_long_press == 0 &&
+			button->code_long_press == 0 && 
+			long_press_count >= KEY_PRESS_STABLE_COUNT){
+				input_event(input, EV_KEY, button->code, 1);
+				input_sync(input);
+				input_event(input, EV_KEY, button->code, 0);
+				input_sync(input);
+				long_press_count = 0;
+		}
+		else{
+			long_press_count++;
+		}
 		mod_timer(&button->timer, jiffies + DEBOUNCE_JIFFIES);
+	}else { //@S add. 20180605
+		long_press_count = 0;
+	}
+#endif	
+  }
 }
 
 static irqreturn_t keys_isr(int irq, void *dev_id)
 {
 	struct rk_keys_button *button = (struct rk_keys_button *)dev_id;
 	struct rk_keys_drvdata *pdata = dev_get_drvdata(button->dev);
-	struct input_dev *input = pdata->input;
+	//struct input_dev *input = pdata->input;
 
 	BUG_ON(irq != gpio_to_irq(button->gpio));
 
@@ -156,8 +246,10 @@ static irqreturn_t keys_isr(int irq, void *dev_id)
 			"wakeup: %skey[%s]: report event[%d] state[%d]\n",
 			(button->type == TYPE_ADC) ? "adc" : "gpio",
 			button->desc, button->code, button->state);
+#if 0  //---ian:org		
 		input_event(input, EV_KEY, button->code, button->state);
 		input_sync(input);
+#endif		
 	}
 	if (button->wakeup)
 		wake_lock_timeout(&pdata->wake_lock, WAKE_LOCK_JIFFIES);
@@ -166,7 +258,7 @@ static irqreturn_t keys_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/*
+
 static ssize_t adc_value_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
@@ -175,7 +267,6 @@ static ssize_t adc_value_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "adc_value: %d\n", ddata->result);
 }
 static DEVICE_ATTR(get_adc_value, S_IRUGO | S_IWUSR, adc_value_show, NULL);
-*/
 
 static const struct of_device_id rk_key_match[] = {
 	{ .compatible = "rockchip,key", .data = NULL},
@@ -256,6 +347,7 @@ static int rk_keys_parse_dt(struct rk_keys_drvdata *pdata,
 		pdata->drift_advalue = (int)drift;
 
 	chan = iio_channel_get(&pdev->dev, NULL);
+	//chan = devm_iio_channel_get(&pdev->dev, "buttons");
 	if (IS_ERR(chan)) {
 		dev_info(&pdev->dev, "no io-channels defined\n");
 		chan = NULL;
@@ -270,6 +362,16 @@ static int rk_keys_parse_dt(struct rk_keys_drvdata *pdata,
 			goto error_ret;
 		}
 		pdata->button[i].code = code;
+		//---ian
+		if (of_property_read_u32(child_node, "linux,code_long_press", &code)) {
+			code = 0;
+		}
+		pdata->button[i].code_long_press = code;
+		if (of_property_read_u32(child_node, "linux,code_very_long_press", &code)) {
+			code = 0;
+		}
+		pdata->button[i].code_very_long_press = code;
+		
 		pdata->button[i].desc =
 		    of_get_property(child_node, "label", NULL);
 		pdata->button[i].type =
@@ -385,6 +487,11 @@ static int keys_probe(struct platform_device *pdev)
 			wakeup = 1;
 
 		input_set_capability(input, EV_KEY, button->code);
+
+		if( button->code_long_press > 0 )
+			input_set_capability(input, EV_KEY, button->code_long_press);
+		if( button->code_very_long_press > 0 )
+			input_set_capability(input, EV_KEY, button->code_very_long_press);
 	}
 
 	wake_lock_init(&ddata->wake_lock, WAKE_LOCK_SUSPEND, input->name);
@@ -440,6 +547,14 @@ static int keys_probe(struct platform_device *pdev)
 	}
 
 	input_set_capability(input, EV_KEY, KEY_WAKEUP);
+	//@S add for show adb value. 20181126
+	error = device_create_file(dev, &dev_attr_get_adc_value);
+	if(error)
+	{
+		pr_err("failed to create key file error: %d\n", error);
+	}
+	//@S add end. 
+	
 	/* adc polling work */
 	if (ddata->chan) {
 		INIT_DELAYED_WORK(&ddata->adc_poll_work, adc_key_poll);
@@ -541,6 +656,7 @@ static struct platform_driver keys_device_driver = {
 #endif
 	}
 };
+
 
 static int __init rk_keys_driver_init(void)
 {

@@ -145,4 +145,7 @@ config I2C_DEBUG_BUS
 
 endif # I2C
 
+config INPUT_SFH7776
+  bool "light sensor SFH7776"
+
 endmenu

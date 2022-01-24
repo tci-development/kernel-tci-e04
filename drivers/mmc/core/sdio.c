@@ -629,7 +629,6 @@ try_again:
 			return -ENOENT;
 		}
 	}
-
 	/*
 	 * Call the optional HC's init_card function to handle quirks.
 	 */
@@ -658,7 +657,6 @@ try_again:
 			ocr &= ~R4_18V_PRESENT;
 		}
 	}
-
 	/*
 	 * For native busses:  set card RCA and quit open drain mode.
 	 */
@@ -675,7 +673,6 @@ try_again:
 		if (oldcard)
 			oldcard->rca = card->rca;
 	}
-
 	/*
 	 * Read CSD, before selecting the card
 	 */
@@ -686,7 +683,6 @@ try_again:
 
 		mmc_decode_cid(card);
 	}
-
 	/*
 	 * Select card, as all following commands rely on that.
 	 */
@@ -695,7 +691,6 @@ try_again:
 		if (err)
 			goto remove;
 	}
-
 	if (card->quirks & MMC_QUIRK_NONSTD_SDIO) {
 		/*
 		 * This is non-standard SDIO device, meaning it doesn't
@@ -711,7 +706,6 @@ try_again:
 
 		goto finish;
 	}
-
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (host->embedded_sdio_data.cccr)
 		memcpy(&card->cccr, host->embedded_sdio_data.cccr, sizeof(struct sdio_cccr));
@@ -755,14 +749,13 @@ try_again:
 		int same = (card->cis.vendor == oldcard->cis.vendor &&
 			    card->cis.device == oldcard->cis.device);
 		mmc_remove_card(card);
-		if (!same)
-			return -ENOENT;
+		//if (!same)  //@C mask it for wifi donn't work when warm reboot
+		//	return -ENOENT;
 
 		card = oldcard;
 	}
 	card->ocr = ocr_card;
 	mmc_fixup_device(card, NULL);
-
 	if (card->type == MMC_TYPE_SD_COMBO) {
 		err = mmc_sd_setup_card(host, card, oldcard != NULL);
 		/* handle as SDIO-only card if memory init failed */
@@ -782,7 +775,6 @@ try_again:
 	err = sdio_disable_cd(card);
 	if (err)
 		goto remove;
-
 	/* Initialization sequence for UHS-I cards */
 	/* Only if card supports 1.8v and UHS signaling */
 	if ((ocr & R4_18V_PRESENT) && card->sw_caps.sd3_bus_mode) {
@@ -1255,17 +1247,14 @@ int sdio_reset_comm(struct mmc_card *card)
 	err = mmc_send_io_op_cond(host, 0, &ocr);
 	if (err)
 		goto err;
-
 	rocr = mmc_select_voltage(host, ocr);
 	if (!rocr) {
 		err = -EINVAL;
 		goto err;
 	}
-
 	err = mmc_sdio_init_card(host, rocr, card, 0);
-	if (err)
+ 	if (err)
 		goto err;
-
 	mmc_release_host(host);
 	return 0;
 err:

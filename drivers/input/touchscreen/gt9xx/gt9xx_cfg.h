@@ -53,4 +53,26 @@ u8 gtp_dat_7[] = {
 	#include "WGJ10187_GT910_Config_20140623_104014_0X41.cfg"
 };
 
+//@S add for 7N Touch config.
+u8 gtp_dat_7n_0[] = {
+	/* TODO:Puts your update firmware data here! */
+	/* <1024, 600> 7.0 */
+	#include "ZD_GT911_KD_Config_id0.cfg"
+};
+u8 gtp_dat_7n_2[] = {
+	/* TODO:Puts your update firmware data here! */
+	/* <1024, 600> 7.0 */
+	#include "ZD_GT911_qiutianwei_Config_id2.cfg"
+};
+u8 gtp_dat_7nc_3[] = {
+	/* TODO:Puts your update firmware data here! */
+	/* <1024, 600> 7.0 */
+	//#include "ZD_GT911_ZC_7136_7_911_F_80_OA_190730_id0.cfg"
+	#include "ZD_GT911_ZC_7136_id3_D1_191015.cfg"
+};
+u8 gtp_dat_7nc_daystar_3[] = {
+	/* TODO:Puts your update firmware data here! */
+	/* <1024, 600> 7.0 */
+	#include "GT911-7136-DEMO.cfg"
+};
 #endif /* _GOODIX_GT9XX_CFG_H_ */

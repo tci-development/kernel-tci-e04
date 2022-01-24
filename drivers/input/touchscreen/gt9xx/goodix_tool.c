@@ -83,7 +83,7 @@ s8 IC_TYPE[16] = "GT9XX";
 
 static void tool_set_proc_name(char * procname)
 {
-    char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May", 
+ /*   char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May",
         "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     char date[20] = {0};
     char month[4] = {0};
@@ -104,9 +104,9 @@ static void tool_set_proc_name(char * procname)
         }
     }
     
-    sprintf(procname, "gmnode%04d%02d%02d", n_year, n_month, n_day);    
-    //sprintf(procname, "goodix_tool");
-    //GTP_DEBUG("procname = %s", procname);
+    sprintf(procname, "gmnode%04d%02d%02d", n_year, n_month, n_day);  */
+    sprintf(procname, "goodix_tool");
+    GTP_DEBUG("procname = %s", procname);
 }
 
 

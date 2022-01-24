@@ -65,45 +65,6 @@
 		};
 	};
 
-	sound: sound {
-		status = "disabled";
-		compatible = "simple-audio-card";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,name = "rockchip,rt5640-codec";
-		simple-audio-card,mclk-fs = <512>;
-		simple-audio-card,widgets =
-			"Microphone", "Microphone Jack",
-			"Headphone", "Headphone Jack";
-		simple-audio-card,routing =
-			"MIC1", "Microphone Jack",
-			"MIC2", "Microphone Jack",
-			"Microphone Jack", "micbias1",
-			"Headphone Jack", "HPOL",
-			"Headphone Jack", "HPOR";
-
-		simple-audio-card,dai-link@0 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s>;
-			};
-
-			codec {
-				sound-dai = <&rt5640>;
-			};
-		};
-
-		simple-audio-card,dai-link@1 {
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s>;
-			};
-
-			codec {
-				sound-dai = <&hdmi>;
-			};
-		};
-	};
-
 	ext_gmac: external-gmac-clock {
 		compatible = "fixed-clock";
 		clock-frequency = <125000000>;
@@ -172,6 +133,7 @@
 	vcc_sd: sdmmc-regulator {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
+		gpio = <&gpio8 3 GPIO_ACTIVE_HIGH>;
 		pinctrl-0 = <&sdmmc_pwr>;
 		regulator-name = "vcc_sd";
 		regulator-min-microvolt = <3300000>;
@@ -179,6 +141,20 @@
 		startup-delay-us = <100000>;
 		vin-supply = <&vcc_io>;
 	};
+	
+	/*adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 1>;
+		io-channel-names = "buttons";
+		poll-interval = <100>;
+		keyup-threshold-microvolt = <200000>;
+
+		button-up {
+			label = "Volume Up";
+			linux,code = <KEY_VOLUMEUP>;
+			press-threshold-microvolt = <18000>;
+		};
+	};*/
 
 	wireless-bluetooth {
 		compatible = "bluetooth-platdata";
@@ -188,14 +164,14 @@
 		pinctrl-1 = <&uart0_gpios>;
 		BT,reset_gpio    = <&gpio4 29 GPIO_ACTIVE_HIGH>;
 		BT,wake_gpio     = <&gpio4 26 GPIO_ACTIVE_HIGH>;
-		BT,wake_host_irq = <&gpio4 31 GPIO_ACTIVE_HIGH>;
+		//BT,wake_host_irq = <&gpio4 31 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
 	wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
-		wifi_chip_type = "ap6335";
+		wifi_chip_type = "ap6255";
 		sdio_vref = <1800>;
 		WIFI,host_wake_irq = <&gpio4 30 GPIO_ACTIVE_HIGH>;
 		status = "okay";
@@ -217,20 +193,21 @@
 };
 
 &gmac {
-	phy-supply = <&vcc_phy>;
+	phy-supply = <&vcc_lan>;
 	phy-mode = "rgmii";
 	clock_in_out = "input";
-	snps,reset-gpio = <&gpio4 7 0>;
+	snps,reset-gpio = <&gpio4 8 0>;
 	snps,reset-active-low;
-	snps,reset-delays-us = <0 10000 50000>;
+	snps,force_thresh_dma_mode;
+	snps,reset-delays-us = <0 10000 1000000>;
 	assigned-clocks = <&cru SCLK_MAC>;
 	assigned-clock-parents = <&ext_gmac>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&rgmii_pins>;
-	tx_delay = <0x30>;
-	rx_delay = <0x10>;
-	max-speed = <100>;
-	status = "okay";
+	pinctrl-0 = <&rgmii_pins &phy_rst &phy_pmeb &phy_int>;
+	tx_delay = <0x20>;
+	rx_delay = <0x14>;
+	max-speed = <1000>;
+	status = "ok";
 };
 
 &hdmi {
@@ -246,23 +223,22 @@
 };
 
 &sdmmc {
+	clock-frequency = <50000000>;
 	supports-sd;
 	bus-width = <4>;
-	cap-mmc-highspeed;
-	sd-uhs-sdr12;
-	sd-uhs-sdr25;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
+	cap-mmc-highspeed; 
 	cap-sd-highspeed;
+	//sd-uhs-sdr104;
+	cd-gpios = <&gpio6 22 GPIO_ACTIVE_HIGH>;/*CD GPIO*/
+	broken-cd;
 	card-detect-delay = <200>;
-	disable-wp;			/* wp not hooked up */
-	num-slots = <1>;
+	vqmmc-supply = <&vcc_sd>;
+	vmmc-supply = <&vccio_sd>;
+	ignore-pm-notify;
+  	keep-power-in-suspend;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_cd &sdmmc_bus4>;
 	status = "okay";
-	vmmc-supply = <&vcc_sd>;
-	vqmmc-supply = <&vccio_sd>;
-	supports-sd;
 };
 
 &edp {
@@ -287,46 +263,6 @@
 };
 
 &i2c0 {
-	status = "okay";
-};
-
-&i2c2 {
-	status = "okay";
-
-	rt5640: rt5640@1c {
-		#sound-dai-cells = <0>;
-		compatible = "realtek,rt5640";
-		reg = <0x1c>;
-		clocks = <&cru SCLK_I2S0_OUT>;
-		clock-names = "mclk";
-		interrupt-parent = <&gpio6>;
-		interrupts = <7 IRQ_TYPE_EDGE_FALLING>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2s0_mclk>;
-	};
-};
-
-&i2c3 {
-	status = "okay";
-};
-
-&i2c4 {
-	status = "okay";
-	clock-frequency = <400000>;
-
-	gsl3673@40 {
-		compatible = "GSL,GSL3673";
-		reg = <0x40>;
-		screen_max_x = <1536>;
-		screen_max_y = <2048>;
-		irq_gpio_number = <&gpio7 6 IRQ_TYPE_LEVEL_LOW>;
-		rst_gpio_number = <&gpio7 5 GPIO_ACTIVE_HIGH>;
-		status = "okay";
-	};
-};
-
-&i2s {
-	#sound-dai-cells = <0>;
 	status = "okay";
 };
 
@@ -359,7 +295,8 @@
 
 &sdio0 {
 	status = "okay";
-	max-frequency = <150000000>;
+	//max-frequency = <150000000>;
+	max-frequency = <148000000>;
 
 	bus-width = <4>;
 	cap-sd-highspeed;
@@ -448,6 +385,14 @@
 };
 
 &pinctrl {
+	pcfg_output_high: pcfg-output-high {
+		output-high;
+	};
+
+	pcfg_output_low: pcfg-output-low {
+		output-low;
+	};
+	
 	pcfg_pull_none_drv_8ma: pcfg-pull-none-drv-8ma {
 		drive-strength = <8>;
 	};
@@ -503,6 +448,36 @@
 			rockchip,pins = <7 8 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+	
+	act8846 {
+		pmic_vsel: pmic-vsel {
+			rockchip,pins = <7 14 RK_FUNC_GPIO &pcfg_output_low>;
+		};
+
+		pwr_hold: pwr-hold {
+			rockchip,pins = <0 6 RK_FUNC_GPIO &pcfg_output_high>;
+		};
+	};
+	
+	gmac {
+		phy_int: phy-int {
+			rockchip,pins = <0 9 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		phy_pmeb: phy-pmeb {
+			rockchip,pins = <0 8 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		phy_rst: phy-rst {
+			rockchip,pins = <4 8 RK_FUNC_GPIO &pcfg_output_high>;
+		};
+	};
+
+	hym8563 {
+		rtc_int: rtc-int {
+			rockchip,pins = <7 4 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
 
 	eth_phy {
 		eth_phy_pwr: eth-phy-pwr {
@@ -515,7 +490,7 @@
 			rockchip,pins = <7 4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
-
+	
 	wireless-bluetooth {
 		uart0_gpios: uart0-gpios {
 			rockchip,pins = <4 19 RK_FUNC_GPIO &pcfg_pull_none>;

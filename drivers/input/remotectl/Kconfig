@@ -12,8 +12,17 @@ menuconfig ROCKCHIP_REMOTECTL
 
 if ROCKCHIP_REMOTECTL
 
+config RK_REMOTECTL_GPIO
+	bool "rkxx remoctrl gpio"
+	default y
+
 config ROCKCHIP_REMOTECTL_PWM
 	bool "rockchip remoctrl pwm capture"
 	default n
+
+config RK_IR_NO_DEEP_SLEEP
+    bool "rk_pwm-remoctrl no Deep Sleep"
+    depends on ROCKCHIP_REMOTECTL
+    default n
 
 endif

@@ -808,14 +808,14 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable", 0);
 	if (IS_ERR(panel->enable_gpio)) {
 		err = PTR_ERR(panel->enable_gpio);
-		dev_err(dev, "failed to request enable GPIO: %d\n", err);
+		printk(dev, "+++failed to request enable GPIO: %d\n", err);
 		return err;
 	}
-
+	gpiod_direction_output(panel->enable_gpio, 1);
 	panel->reset_gpio = devm_gpiod_get_optional(dev, "reset", 0);
 	if (IS_ERR(panel->reset_gpio)) {
 		err = PTR_ERR(panel->reset_gpio);
-		dev_err(dev, "failed to request reset GPIO: %d\n", err);
+		printk(dev, "+++failed to request reset GPIO: %d\n", err);
 		return err;
 	}
 
@@ -877,6 +877,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (backlight) {
 		panel->backlight = of_find_backlight_by_node(backlight);
 		of_node_put(backlight);
+		printk("+++enter backlight\n");
 
 		if (!panel->backlight)
 			return -EPROBE_DEFER;

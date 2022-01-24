@@ -81,9 +81,14 @@ static const struct rockchip_grf_info rk3228_grf __initconst = {
 };
 
 #define RK3288_GRF_SOC_CON0		0x244
-
+#ifdef CONFIG_INPUT_SFH7776
+	#define RK3288_GRF_SOC_CON13		0x0278
+#endif
 static const struct rockchip_grf_value rk3288_defaults[] __initconst = {
 	{ "jtag switching", RK3288_GRF_SOC_CON0, HIWORD_UPDATE(0, 1, 12) },
+#ifdef CONFIG_INPUT_SFH7776
+	{ "uart0 rts switching", RK3288_GRF_SOC_CON13, HIWORD_UPDATE(1, 1, 5) },
+#endif
 };
 
 static const struct rockchip_grf_info rk3288_grf __initconst = {

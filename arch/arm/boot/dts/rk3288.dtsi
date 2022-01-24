@@ -334,6 +334,19 @@
 		clock-output-names = "xin24m";
 		#clock-cells = <0>;
 	};
+	
+	xin32k: xin32k {
+  		compatible = "fixed-clock";
+  		clock-frequency = <32768>;
+  		clock-output-names = "xin32k";
+  		#clock-cells = <0>;
+ 	};
+
+	cpuinfo {
+		compatible = "rockchip,cpuinfo";
+		nvmem-cells = <&efuse_id>;
+		nvmem-cell-names = "id";
+	};
 
 	timer {
 		compatible = "arm,armv7-timer";
@@ -368,7 +381,14 @@
 		clocks = <&cru HCLK_SDIO0>, <&cru SCLK_SDIO0>,
 			 <&cru SCLK_SDIO0_DRV>, <&cru SCLK_SDIO0_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
-		fifo-depth = <0x100>;
+		//assigned-clocks = <&cru 69>;
+		//		assigned-clock-parents = <&cru 4>;
+		//	assigned-clock-rates = <148500000>;
+		//fifo-depth = <0x100>;
+		assigned-clocks = <&cru SCLK_SDIO0>;
+        assigned-clock-parents = <&cru PLL_GPLL>;
+        assigned-clock-rates = <148500000>;
+        fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0d0000 0x0 0x4000>;
 		status = "disabled";
@@ -380,7 +400,14 @@
 		clocks = <&cru HCLK_SDIO1>, <&cru SCLK_SDIO1>,
 			 <&cru SCLK_SDIO1_DRV>, <&cru SCLK_SDIO1_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
-		fifo-depth = <0x100>;
+		//assigned-clocks = <&cru 70>;
+        //  assigned-clock-parents = <&cru 4>;
+        // assigned-clock-rates = <148500000>;
+		//fifo-depth = <0x100>;
+		assigned-clocks = <&cru SCLK_SDIO1>;
+        assigned-clock-parents = <&cru PLL_GPLL>;
+        assigned-clock-rates = <148500000>;
+        fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0e0000 0x0 0x4000>;
 		status = "disabled";
@@ -635,14 +662,14 @@
 	};
 
 	tsadc: tsadc@ff280000 {
-		compatible = "rockchip,rk3288-tsadc";
+  		compatible = "rockchip,rk3288-tsadc";
 		reg = <0x0 0xff280000 0x0 0x100>;
-		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&cru SCLK_TSADC>, <&cru PCLK_TSADC>;
+		interrupts = <0 37 4>;
+		clocks = <&cru 72>, <&cru 346>;
 		clock-names = "tsadc", "apb_pclk";
-		assigned-clocks = <&cru SCLK_TSADC>;
+		assigned-clocks = <&cru 72>;
 		assigned-clock-rates = <5000>;
-		resets = <&cru SRST_TSADC>;
+		resets = <&cru 159>;
 		reset-names = "tsadc-apb";
 		pinctrl-names = "init", "default", "sleep";
 		pinctrl-0 = <&otp_gpio>;
@@ -650,9 +677,9 @@
 		pinctrl-2 = <&otp_gpio>;
 		#thermal-sensor-cells = <1>;
 		rockchip,hw-tshut-temp = <120000>;
-		rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
+		rockchip,hw-tshut-mode = <0>;
 		status = "disabled";
-	};
+ };
 
 	gmac: ethernet@ff290000 {
 		compatible = "rockchip,rk3288-gmac";
@@ -715,7 +742,7 @@
 
 	usb_otg: usb@ff580000 {
 		compatible = "rockchip,rk3288-usb", "rockchip,rk3066-usb",
-				"snps,dwc2";
+				"snps,dwc2", "rockchip,rk3288_usb20_otg";
 		reg = <0x0 0xff580000 0x0 0x40000>;
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_OTG0>;
@@ -1051,7 +1078,7 @@
                                   <&cru ACLK_PERI>, <&cru HCLK_PERI>,
                                   <&cru PCLK_PERI>;
 		assigned-clock-rates = <594000000>,
-				       <1250000000>, <300000000>,
+				       <500000000>, <300000000>,
 				       <150000000>, <75000000>,
 				       <300000000>, <150000000>,
 				       <75000000>;
@@ -1716,7 +1743,7 @@
 	gpu_opp_table: opp-table1 {
 		compatible = "operating-points-v2";
 
-		opp-100000000 {
+		/*opp-100000000 {
 			opp-hz = /bits/ 64 <100000000>;
 			opp-microvolt = <950000>;
 		};
@@ -1731,7 +1758,7 @@
 		opp-420000000 {
 			opp-hz = /bits/ 64 <420000000>;
 			opp-microvolt = <1100000>;
-		};
+		};*/
 		opp-500000000 {
 			opp-hz = /bits/ 64 <500000000>;
 			opp-microvolt = <1200000>;
@@ -2095,18 +2122,18 @@
 
 		sdio0 {
 			sdio0_bus1: sdio0-bus1 {
-				rockchip,pins = <4 20 RK_FUNC_1 &pcfg_pull_up>;
+				rockchip,pins = <4 20 1 &pcfg_pull_up_drv_8ma>;
 			};
 
 			sdio0_bus4: sdio0-bus4 {
-				rockchip,pins = <4 20 RK_FUNC_1 &pcfg_pull_up>,
-						<4 21 RK_FUNC_1 &pcfg_pull_up>,
-						<4 22 RK_FUNC_1 &pcfg_pull_up>,
-						<4 23 RK_FUNC_1 &pcfg_pull_up>;
+				rockchip,pins = <4 20 RK_FUNC_1 &pcfg_pull_up_drv_8ma>,
+						<4 21 RK_FUNC_1 &pcfg_pull_up_drv_8ma>,
+						<4 22 RK_FUNC_1 &pcfg_pull_up_drv_8ma>,
+						<4 23 RK_FUNC_1 &pcfg_pull_up_drv_8ma>;
 			};
 
 			sdio0_cmd: sdio0-cmd {
-				rockchip,pins = <4 24 RK_FUNC_1 &pcfg_pull_up>;
+				rockchip,pins = <4 24 1 &pcfg_pull_up_drv_8ma>;
 			};
 
 			sdio0_clk: sdio0-clk {
@@ -2382,21 +2409,21 @@
 
 		gmac {
 			rgmii_pins: rgmii-pins {
-				rockchip,pins = <3 30 3 &pcfg_pull_none>,
-						<3 31 3 &pcfg_pull_none>,
-						<3 26 3 &pcfg_pull_none>,
-						<3 27 3 &pcfg_pull_none>,
+				rockchip,pins = <3 30 3 &pcfg_pull_none_12ma>,
+						<3 31 3 &pcfg_pull_none_12ma>,
+						<3 26 3 &pcfg_pull_none_12ma>,
+						<3 27 3 &pcfg_pull_none_12ma>,
 						<3 28 3 &pcfg_pull_none_12ma>,
 						<3 29 3 &pcfg_pull_none_12ma>,
 						<3 24 3 &pcfg_pull_none_12ma>,
 						<3 25 3 &pcfg_pull_none_12ma>,
-						<4 0 3 &pcfg_pull_none>,
-						<4 5 3 &pcfg_pull_none>,
-						<4 6 3 &pcfg_pull_none>,
+						<4 0 3 &pcfg_pull_none_12ma>,
+						<4 5 3 &pcfg_pull_none_12ma>,
+						<4 6 3 &pcfg_pull_none_12ma>,
 						<4 9 3 &pcfg_pull_none_12ma>,
 						<4 4 3 &pcfg_pull_none_12ma>,
-						<4 1 3 &pcfg_pull_none>,
-						<4 3 3 &pcfg_pull_none>;
+						<4 1 3 &pcfg_pull_none_12ma>,
+						<4 3 3 &pcfg_pull_none_12ma>;
 			};
 
 			rmii_pins: rmii-pins {

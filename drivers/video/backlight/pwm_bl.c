@@ -281,8 +281,9 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		    gpiod_get_direction(pb->enable_gpio) == GPIOF_DIR_OUT &&
 		    gpiod_get_value(pb->enable_gpio) == 0)
 			initial_blank = FB_BLANK_POWERDOWN;
-		else
+		else{
 			gpiod_direction_output(pb->enable_gpio, 1);
+			printk("power on backlight++++\n");}
 	}
 
 	pb->power_supply = devm_regulator_get(&pdev->dev, "power");

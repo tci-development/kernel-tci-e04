@@ -51,7 +51,7 @@ allowed_warnings = set([
     "atags_to_fdt.c:98", # arch/arm/boot/compressed/atags_to_fdt.c:98:1: warning: the frame size of 1032 bytes is larger than 1024 bytes
     "drm_edid.c:3506", # drivers/gpu/drm/drm_edid.c:3506:13: warning: 'cea_db_is_hdmi_forum_vsdb' defined but not used
     # W=1
-    "bounds.c:15", # kernel/bounds.c:15:6: warning: no previous prototype for ‘foo’
+    "bounds.c:15", # kernel/bounds.c:15:6: warning: no previous prototype for ?�foo??
     "cpufeature.h:157", # arch/arm64/include/asm/cpufeature.h:157:68: warning: signed and unsigned type in conditional expression
     "sched.h:1211", # include/linux/sched.h:1211:1: warning: type qualifiers ignored on function return type
     "halphyrf_8188e_ce.c:2208", # drivers/net/wireless/rockchip_wlan/rtl8189es/hal/phydm/rtl8188e/halphyrf_8188e_ce.c:2208:1: warning: the frame size of 1056 bytes is larger than 1024 bytes
@@ -72,13 +72,13 @@ def interpret_warning(line):
         print ("error, forbidden warning:" + m.group(2))
 
         # If there is a warning, remove any object if it exists.
-        if ofile:
-            try:
-                os.remove(ofile)
-            except OSError:
-                pass
-        global do_exit
-        do_exit = True;
+    #    if ofile:
+   #         try:
+  #              os.remove(ofile)
+   #         except OSError:
+   #             pass
+  #      global do_exit
+  #      do_exit = True;
 
 def run_gcc():
     args = sys.argv[1:]

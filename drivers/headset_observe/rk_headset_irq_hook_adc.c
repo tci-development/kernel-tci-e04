@@ -87,6 +87,9 @@ extern int es8316_headset_detect(int jack_insert);
 #if defined(CONFIG_SND_SOC_CX2072X)
 extern int cx2072x_jack_report(void);
 #endif
+#ifdef CONFIG_SND_SOC_RT5640
+extern int rt5640_headset_mic_detect(int jack_insert);
+#endif
 
 /* headset private data */
 struct headset_priv {
@@ -212,6 +215,9 @@ static irqreturn_t headset_interrupt(int irq, void *dev_id)
 			#if defined (CONFIG_SND_SOC_RT3261) || defined (CONFIG_SND_SOC_RT3224)
 			rt3261_headset_mic_detect(false);
 			#endif
+			#ifdef CONFIG_SND_SOC_RT5640
+			rt5640_headset_mic_detect(false);
+			#endif
 			#ifdef CONFIG_SND_SOC_RT5631_PHONE
 			rt5631_headset_mic_detect(false);
 			#endif
@@ -266,6 +272,10 @@ static void hook_once_work(struct work_struct *work)
 	rt3261_headset_mic_detect(true);
 	#endif
 
+	#ifdef CONFIG_SND_SOC_RT5640
+	rt5640_headset_mic_detect(true);
+	#endif
+	
 	#ifdef CONFIG_SND_SOC_RT5631_PHONE
 	rt5631_headset_mic_detect(true);
 	#endif
@@ -288,6 +298,10 @@ static void hook_once_work(struct work_struct *work)
 		rt3261_headset_mic_detect(false);
 		#endif	
 
+		#ifdef CONFIG_SND_SOC_RT5640
+		rt5640_headset_mic_detect(false);
+		#endif
+		
 		#ifdef CONFIG_SND_SOC_RT5631_PHONE
 		rt5631_headset_mic_detect(false);
 		#endif					

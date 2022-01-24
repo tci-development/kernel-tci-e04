@@ -19,13 +19,18 @@
 #include <linux/bcd.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
-#include <mach/gpio.h>
-#include <mach/board.h>
+//#include <mach/gpio.h>
+//#include <mach/board.h>
+#include <linux/workqueue.h>
 #include "rtc-s35392a.h"
+
+#include <linux/of_gpio.h>
+#include <linux/irqdomain.h>
 
 #define RTC_RATE	100 * 1000
 #define S35392_TEST 0
 
+#define RTC_CALCULATE
 #if 0
 #define DBG(x...)   printk(x)
 #else
@@ -37,8 +42,8 @@ struct s35392a {
 	struct rtc_device *rtc;
 	int twentyfourhour;
 	struct work_struct work;
+	struct mutex mutex;
 };
-
 
 
 static int s35392a_set_reg(struct s35392a *s35392a, const char reg, char *buf, int len)
@@ -52,7 +57,7 @@ static int s35392a_set_reg(struct s35392a *s35392a, const char reg, char *buf, i
 	msg.flags = client->flags;
 	msg.len = len;
 	msg.buf = buff;
-	msg.scl_rate = RTC_RATE;
+	//msg.scl_rate = RTC_RATE;
 	
 	ret = i2c_transfer(client->adapter,&msg,1);
 	for(i=0;i<len;i++)
@@ -71,7 +76,7 @@ static int s35392a_get_reg(struct s35392a *s35392a, const char reg, char *buf, i
 	msg.flags = client->flags | I2C_M_RD;
 	msg.len = len;
 	msg.buf = buf;
-	msg.scl_rate = RTC_RATE;
+	//msg.scl_rate = RTC_RATE;
 
 	ret = i2c_transfer(client->adapter,&msg,1);
 	return ret;
@@ -136,6 +141,7 @@ static int s35392a_test(struct s35392a *s35392a)
 	return 0;
 }
 #endif
+/*
 static int s35392a_init(struct s35392a *s35392a)
 {
 	char buf[1];
@@ -152,7 +158,7 @@ static int s35392a_init(struct s35392a *s35392a)
 	return s35392a_set_reg(s35392a, S35392A_CMD_STATUS1, buf, sizeof(buf));
 
 }
-
+*/
 
 static char s35392a_hr2reg(struct s35392a *s35392a, int hour)
 {
@@ -273,8 +279,8 @@ static int s35392a_i2c_read_alarm(struct i2c_client *client, struct rtc_wkalrm  
         	return err;
 	for(i=0;i<3;i++)
 		DBG("buf[%d]=0x%x\n",i,buf[i]);
-   	 for(i = 0;i < 3;++i)
-       	 buf[i] = bitrev8(buf[i]);
+	for(i = 0;i < 3;++i)
+		buf[i] = bitrev8(buf[i]);
 	for(i=0;i<3;i++)
 		DBG("buf[%d]=0x%x\n",i,buf[i]);
    	tm->time.tm_wday = -1;   
@@ -331,34 +337,35 @@ static int s35392a_i2c_set_alarm(struct i2c_client *client, struct rtc_wkalrm  *
 		bin2bcd(tm->time.tm_min) | S35392A_ALARM_ENABLE:0;	
 	for(i=0;i<3;i++)
 		DBG("buf[%d]=0x%x\n",i,buf[i]);
-	 for(i = 0;i < 3;++i)
-       	 buf[i] = bitrev8(buf[i]);
+	for(i = 0;i < 3;++i)
+		buf[i] = bitrev8(buf[i]);
 	for(i=0;i<3;i++)
 		DBG("buf[%d]=0x%x\n",i,buf[i]);
-	 if(tm->enabled)
-	 {
-        	data = 0x00;
-		 s35392a_set_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);	
-        	s35392a_set_reg(s35392a, S35392A_CMD_INT2, &data, 1);
+	if(tm->enabled)
+	{
+		data = 0x00;
+		s35392a_set_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);	
+			s35392a_set_reg(s35392a, S35392A_CMD_INT2, &data, 1);
 
 		s35392a_get_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);
 		//data =  (data |S35392A_FLAG_INT2AE) & 0x2;
-        	data = 0x02;
+			data = 0x02;
 		s35392a_set_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);		
 		s35392a_get_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);
 		DBG("data = 0x%x\n",data);
 		err = s35392a_set_reg(s35392a, S35392A_CMD_INT2, buf, sizeof(buf));
 		return err;
-	 }
-	 else
-	 {
+	}
+	else
+	{
 		//s35392a_get_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);
 		//data &=  ~S35392A_FLAG_INT1AE;
 		//s35392a_set_reg( s35392a, S35392A_CMD_STATUS2, &data, 1);
-	 }
-	 return -1;	
+	}
+	return -1;	
 	
 }
+/*
 static int s35392a_i2c_read_alarm0(struct i2c_client *client, struct rtc_wkalrm  *tm)
 {
 	struct s35392a	*s35392a = i2c_get_clientdata(client);
@@ -457,6 +464,7 @@ static int s35392a_i2c_set_alarm0(struct i2c_client *client, struct rtc_wkalrm  
 	 return -1;	
 	
 }
+
 static void s35392a_alarm_test(struct i2c_client *client ,struct rtc_time rtc_alarm_rtc_time)
 {
 	struct rtc_wkalrm rtc_alarm,tm;	
@@ -572,6 +580,7 @@ static int s35392a_set_init_time(struct s35392a *s35392a)
 	s35392a_set_datetime(client, tm);
 	return 0;
 }
+*/
 static int s35392a_reset(struct s35392a *s35392a)
 {
 	char buf[1];
@@ -582,6 +591,7 @@ static int s35392a_reset(struct s35392a *s35392a)
         buf[0] = 0x00;
         s35392a_set_reg(s35392a, S35392A_CMD_STATUS2, buf, 1);   
         s35392a_set_reg(s35392a, S35392A_CMD_INT2, buf, 1);
+        printk("**@S s35392a_reset set S35392a STATUS2 and INT2 all is 0.\n");
 		return 0;
 	}
 
@@ -593,6 +603,27 @@ static int s35392a_reset(struct s35392a *s35392a)
 	return 0;		
 }
 
+#ifdef RTC_CALCULATE
+static int s35392a_rtc_calculate(struct s35392a *s35392a)
+{
+	char buf[1];
+
+	mutex_lock(&s35392a->mutex);
+	 
+	if (s35392a_get_reg(s35392a, S35392A_CMD_CHECK, buf, sizeof(buf)) < 0)
+		return -EIO;	
+   buf[0] = 0x36; //0xcb: calculate -4s/D. 0x06(incorrect): calculate -6.4s/D. 0x36(incorrect): calculate -5.2s/D.
+   s35392a_set_reg(s35392a, S35392A_CMD_CHECK, buf, 1);
+   printk("**@S set Clock-correction register value 0x%x.\n", buf[0]);
+   buf[0]=0x0;
+   if (s35392a_get_reg(s35392a, S35392A_CMD_CHECK, buf, sizeof(buf)) < 0)
+		return -EIO;
+   printk("**@S read Clock-correction register value 0x%x.\n", buf[0]);
+	 
+	mutex_unlock(&s35392a->mutex);     
+   return 0; 
+}
+#endif
 static int s35392a_disable_test_mode(struct s35392a *s35392a)
 {
 	char buf[1];
@@ -668,7 +699,7 @@ static int s35392a_rtc_ioctl(struct device *dev,unsigned int cmd,unsigned long a
 err:
 	return -EIO;
 }
-static int  s35392a_rtc_proc(struct device *dev, unsigned int cmd, unsigned long arg)
+static int  s35392a_rtc_proc(struct device *dev, struct seq_file *seq)
 {
 	return 0;
 }
@@ -699,7 +730,7 @@ static ssize_t  s35392a_sysfs_show_sqwfreq(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	DBG("\n@@@@@@@@@@@ s35392a_sysfs_show_sqwfreq@@@@@@@@@@@@@\n");
-	struct i2c_client *client = to_i2c_client(dev);
+	//struct i2c_client *client = to_i2c_client(dev);
 	return 0;
 }
 static ssize_t s35392a_sysfs_set_sqwfreq(struct device *dev,
@@ -742,10 +773,13 @@ static void s35392a_work_func(struct work_struct *work)
 {
 	struct s35392a *s35392a = container_of(work, struct s35392a, work);
 	struct i2c_client *client = s35392a->client;
-    
-	DBG("\n@@@@@@@@@@@rtc_wakeup_irq@@@@@@@@@@@@@\n");
+       //struct mutex *lock = &s35392a->rtc->ops_lock;  //@S add. 20141218		
+	char data;
+
+	mutex_lock(&s35392a->mutex);  //@S add. 20141218
 	
-	char data = 0x00;
+	DBG("\n@@@@@@@@@@@rtc_wakeup_irq@@@@@@@@@@@@@\n");
+
     s35392a_get_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);
     data = 0x00;
     s35392a_set_reg(s35392a, S35392A_CMD_STATUS2, &data, 1);
@@ -753,26 +787,34 @@ static void s35392a_work_func(struct work_struct *work)
     
 	DBG("\n@@@@@@@@@@@rtc_wakeup_irq@@@@@@@@@@@@@\n");	
 		
-	enable_irq(client->irq);		
+	enable_irq(client->irq);
+	
+	mutex_unlock(&s35392a->mutex);  //@S add. 20141218		
 }
 
-static void s35392a_wakeup_irq(int irq, void *dev_id)
+static irqreturn_t s35392a_wakeup_irq(int irq, void *dev_id)
 {       
 	struct s35392a *s35392a = (struct s35392a *)dev_id;
 
     disable_irq_nosync(irq);
     schedule_work(&s35392a->work);
+
+    return IRQ_HANDLED;   //@S add. 20151123
 }
 
 static int s35392a_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	struct rk2818_rtc_platform_data *pdata = client->dev.platform_data;
+	//struct rk2818_rtc_platform_data *pdata = client->dev.platform_data;  //@S mask it for debug. 20141211
 	int err;
-	unsigned int i;
+	//unsigned int i;
 	struct s35392a *s35392a;
 	struct rtc_time tm;
 	char buf[1];
+	
+	struct device_node *np = client->dev.of_node;
+	unsigned long irq_flags;
+	int result;
 	
 	DBG("@@@@@%s:%d@@@@@\n",__FUNCTION__,__LINE__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -780,13 +822,15 @@ static int s35392a_probe(struct i2c_client *client,
 		goto exit;
 	}
 
-	s35392a = kzalloc(sizeof(struct s35392a), GFP_KERNEL);
+	s35392a = devm_kzalloc(&client->dev,sizeof(*s35392a), GFP_KERNEL);
 	if (!s35392a) {
 		err = -ENOMEM;
 		goto exit;
 	}
 
 	s35392a->client = client;
+	client->irq = 0;
+	mutex_init(&s35392a->mutex);  //@S add. 20141218
 	i2c_set_clientdata(client, s35392a);
 	//mdelay(500);
 	//s35392a_init(s35392a);
@@ -815,13 +859,6 @@ static int s35392a_probe(struct i2c_client *client,
 	if (s35392a_get_datetime(client, &tm) < 0)
 		dev_warn(&client->dev, "clock needs to be set\n");
 		
-	s35392a->rtc = rtc_device_register(s35392a_driver.driver.name,
-				&client->dev, &s35392a_rtc_ops, THIS_MODULE);
-	
-	if (IS_ERR(s35392a->rtc)) {
-		err = PTR_ERR(s35392a->rtc);
-		goto exit_dummy;
-	}
 	err = s35392a_sysfs_register(&client->dev);
 	if(err)
 	{
@@ -829,34 +866,23 @@ static int s35392a_probe(struct i2c_client *client,
 		goto exit_dummy;
 	}
 	
-	if(err = gpio_request(client->irq, "rtc gpio"))
-	{
-		dev_err(&client->dev, "gpio request fail\n");
-		gpio_free(client->irq);
+	client->irq = of_get_named_gpio_flags(np, "irq_gpio", 0,(enum of_gpio_flags *)&irq_flags);
+	client->irq = gpio_to_irq(client->irq);
+
+	result = devm_request_threaded_irq(&client->dev, client->irq, NULL, s35392a_wakeup_irq, irq_flags | IRQF_ONESHOT, client->dev.driver->name,s35392a );
+	if (result) {
+		printk(KERN_ERR "%s:fail to request irq = %d, ret = 0x%x\n",__func__, client->irq, result);	       
+		goto exit_dummy;	       
+	}
+	enable_irq_wake(client->irq);
+	device_init_wakeup(&client->dev, 1);
+	
+	s35392a->rtc = devm_rtc_device_register(&client->dev,s35392a_driver.driver.name,
+				 &s35392a_rtc_ops, THIS_MODULE);
+	
+	if (IS_ERR(s35392a->rtc)) {
+		err = PTR_ERR(s35392a->rtc);
 		goto exit_dummy;
-	}
-
-	if (pdata && (pdata->irq_type == GPIO_LOW)) {
-		gpio_pull_updown(client->irq,GPIOPullUp);
-
-		client->irq = gpio_to_irq(client->irq);
-
-		if(err = request_irq(client->irq, s35392a_wakeup_irq,IRQF_TRIGGER_LOW,NULL,s35392a) <0)	
-		{
-			DBG("unable to request rtc irq\n");
-			goto exit_dummy;
-		}	
-	}
-	else {
-		gpio_pull_updown(client->irq,GPIOPullDown);
-
-		client->irq = gpio_to_irq(client->irq);
-
-		if(err = request_irq(client->irq, s35392a_wakeup_irq,IRQF_TRIGGER_HIGH,NULL,s35392a) <0)	
-		{
-			DBG("unable to request rtc irq\n");
-			goto exit_dummy;
-		}	
 	}
 	
 	INIT_WORK(&s35392a->work, s35392a_work_func);
@@ -868,6 +894,13 @@ static int s35392a_probe(struct i2c_client *client,
 	 	s35392a_get_datetime(client, &tm);
         	s35392a_alarm_test(client, tm);
 		//sleep(200);
+	}
+#endif
+#ifdef RTC_CALCULATE
+	err = s35392a_rtc_calculate(s35392a);
+	if (err < 0) {
+		dev_err(&client->dev, "**@S error set RTC-correction register.\n");
+		goto exit_dummy;	       
 	}
 #endif
 	
@@ -885,7 +918,7 @@ exit:
 
 static int s35392a_remove(struct i2c_client *client)
 {
-	unsigned int i;
+	//unsigned int i;
 
 	struct s35392a *s35392a = i2c_get_clientdata(client);
 
@@ -905,9 +938,15 @@ static const struct i2c_device_id s35392a_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, s35392a_id);
 
+static struct of_device_id rtc_dt_ids[] = {
+	{ .compatible = "rtc,s35392a" },
+	{},
+};
+
 static struct i2c_driver s35392a_driver = {
 	.driver		= {
 		.name	= "rtc-s35392a",
+		.of_match_table = of_match_ptr(rtc_dt_ids),
 	},
 	.probe		= s35392a_probe,
 	.remove		= s35392a_remove,

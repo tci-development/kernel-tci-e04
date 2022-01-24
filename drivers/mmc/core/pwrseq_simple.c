@@ -104,12 +104,12 @@ struct mmc_pwrseq *mmc_pwrseq_simple_alloc(struct mmc_host *host,
 	if (!pwrseq)
 		return ERR_PTR(-ENOMEM);
 
-	pwrseq->ext_clk = clk_get(dev, "ext_clock");
+	/*pwrseq->ext_clk = clk_get(dev, "ext_clock");
 	if (IS_ERR(pwrseq->ext_clk) &&
 	    PTR_ERR(pwrseq->ext_clk) != -ENOENT) {
 		ret = PTR_ERR(pwrseq->ext_clk);
 		goto free;
-	}
+	}*/
 
 	pwrseq->reset_gpios = gpiod_get_array(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(pwrseq->reset_gpios)) {
@@ -123,7 +123,7 @@ struct mmc_pwrseq *mmc_pwrseq_simple_alloc(struct mmc_host *host,
 clk_put:
 	if (!IS_ERR(pwrseq->ext_clk))
 		clk_put(pwrseq->ext_clk);
-free:
+//free:
 	kfree(pwrseq);
 	return ERR_PTR(ret);
 }

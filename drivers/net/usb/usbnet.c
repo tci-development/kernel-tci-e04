@@ -46,6 +46,7 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/pm_runtime.h>
+#include <linux/soc/rockchip/rk_vendor_storage.h>
 
 #define DRIVER_VERSION		"22-Aug-2005"
 
@@ -1725,6 +1726,35 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 		SET_NETDEV_DEVTYPE(net, &wlan_type);
 	if ((dev->driver_info->flags & FLAG_WWAN) != 0)
 		SET_NETDEV_DEVTYPE(net, &wwan_type);
+
+	//@R add for read MAC address from eMMC IDB. 20201026
+	#if 1//def CONFIG_ETH_MAC_FROM_IDB
+	printk("eth_mac_from_eeprom***********:%X:%X:%X:%X:%X:%X\n",net->dev_addr[0],
+						net->dev_addr[1],net->dev_addr[2],net->dev_addr[3],
+						net->dev_addr[4],net->dev_addr[5]);
+						
+	if ( (net->dev_addr[0] == 0 && net->dev_addr[1] == 0 && net->dev_addr[2] == 0)
+		|| (net->dev_addr[0] == 0 && net->dev_addr[1] == 0 && net->dev_addr[2] == 0x01) || !is_valid_ether_addr(net->dev_addr)){
+		status = rk_vendor_read(LAN_MAC_ID, net->dev_addr, 6);
+		if (status != 6 ){
+			printk("rk_vendor_read eth mac address failed (%d), rk_vendor_read once more", status);
+			status = rk_vendor_read(LAN_MAC_ID, net->dev_addr, 6);	
+		}
+		if (status != 6 || is_zero_ether_addr(net->dev_addr)) {
+			random_ether_addr(net->dev_addr);
+			printk("rk_vendor_read eth mac address failed (%d), generate random eth mac address:%X:%X:%X:%X:%X:%X\n", status, net->dev_addr[0],
+                          net->dev_addr[1],net->dev_addr[2],net->dev_addr[3],
+                          net->dev_addr[4],net->dev_addr[5] );
+		}
+		printk("mac address:%X:%X:%X:%X:%X:%X\n",net->dev_addr[0],
+						net->dev_addr[1],net->dev_addr[2],net->dev_addr[3],
+						net->dev_addr[4],net->dev_addr[5] );
+		
+		/* Set the MAC address */
+		//ax8817x_write_cmd (dev, AX88772_CMD_WRITE_NODE_ID,0, 0, ETH_ALEN, net->dev_addr);	
+	}
+	#endif
+	//@R add end. 20201026
 
 	/* initialize max rx_qlen and tx_qlen */
 	usbnet_update_max_qlen(dev);

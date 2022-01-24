@@ -8,7 +8,7 @@
 
 / {
 	chosen {
-		bootargs = "earlyprintk console=ttyFIQ0 rw root=PARTUUID=614e0000-0000 rootfstype=ext4 rootwait";
+		bootargs = "earlyprintk console=ttyFIQ0 rw root=PARTUUID=614e0000-0000 rootfstype=ext4 rootwait systemd.gpt_auto=0";
 	};
 
 	/delete-node/ dmc@ff610000;
@@ -36,11 +36,11 @@
 		rockchip,ddr_timing = <&ddr_timing>;
 		system-status-freq = <
 			/*system status		freq(KHz)*/
-			SYS_STATUS_NORMAL	396000
-			SYS_STATUS_REBOOT	396000
-			SYS_STATUS_SUSPEND	192000
-			SYS_STATUS_VIDEO_1080P	300000
-			SYS_STATUS_VIDEO_4K	396000
+			//SYS_STATUS_NORMAL	396000
+			//SYS_STATUS_REBOOT	396000
+			//SYS_STATUS_SUSPEND	192000
+			//SYS_STATUS_VIDEO_1080P	300000
+			//SYS_STATUS_VIDEO_4K	396000
 			SYS_STATUS_VIDEO_4K_10B	528000
 			SYS_STATUS_PERFORMANCE	528000
 			SYS_STATUS_BOOST	396000
@@ -73,6 +73,17 @@
 		};
 	};
 
+	reserved-memory {
+		ramoops_mem: ramoops@00000000 {
+			reg = <0x0 0x8000000 0x0 0xF0000>;
+		};
+
+		drm_logo: drm-logo@00000000 {
+		compatible = "rockchip,drm-logo";
+			reg = <0x0 0x0 0x0 0x0>;
+		};
+	};
+
 	fiq-debugger {
 		compatible = "rockchip,fiq-debugger";
 		interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>;
@@ -88,6 +99,71 @@
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
+	};
+	
+	/*tsadc: tsadc@ff260000 {
+		compatible = "rockchip,tsadc";
+		reg = <0xff280000 0x100>;
+		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+		rockchip,grf = <&grf>;
+		clocks = <&cru SCLK_TSADC>, <&cru PCLK_TSADC>;
+		clock-names = "tsadc", "apb_pclk";
+		assigned-clocks = <&cru SCLK_TSADC>;
+		assigned-clock-rates = <750000>;
+		resets = <&cru SRST_TSADC>;
+		reset-names = "tsadc-apb";
+		pinctrl-names = "init", "default", "sleep";
+		pinctrl-0 = <&otp_gpio>;
+		pinctrl-1 = <&otp_out>;
+		pinctrl-2 = <&otp_gpio>;
+		#thermal-sensor-cells = <1>;
+		rockchip,hw-tshut-temp = <95000>;
+		status = "disabled";
+	};*/
+
+	display-subsystem {
+		status = "okay";
+
+		ports = <&vopb_out>, <&vopl_out>;
+		logo-memory-region = <&drm_logo>;
+
+		route {
+			route_hdmi: route-hdmi {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopb_out_hdmi>;
+			};
+
+			route_edp: route-edp {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_edp>;
+			};
+
+			route_dsi0: route-dsi0 {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_dsi0>;
+			};
+
+			route_lvds: route-lvds {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_lvds>;
+			};
+		};
 	};
 };
 

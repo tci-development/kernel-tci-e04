@@ -118,8 +118,6 @@ int get_wifi_chip_type(void)
 	type = WIFI_AP6234;
     } else if (strcmp(wifi_chip_type_string, "ap6255") == 0) {
 	type = WIFI_AP6255;
-    } else if (strcmp(wifi_chip_type_string, "ap6256") == 0) {
-	type = WIFI_AP6256;
     } else if (strcmp(wifi_chip_type_string, "ap6330") == 0) {
         type = WIFI_AP6330;
     } else if (strcmp(wifi_chip_type_string, "ap6335") == 0) {
@@ -356,7 +354,7 @@ int rockchip_wifi_power(int on)
 				    ret = regulator_disable(ldo);
                 }
                 wifi_power_state = 0;
-			    LOG("wifi shut off power.\n");
+			    LOG("wifi regulator shut off power.\n");
 			}
 			regulator_put(ldo);
 			msleep(100);
@@ -370,26 +368,23 @@ int rockchip_wifi_power(int on)
 				gpio_set_value(poweron->io, poweron->enable);
 				msleep(100);
 			}
-
 			if (gpio_is_valid(reset->io)) {
 				gpio_set_value(reset->io, reset->enable);
 				msleep(100);
 			}
-
             wifi_power_state = 1;
-			LOG("wifi turn on power. %d\n", poweron->io);
+			LOG("wifi turn on power111. %d\n", poweron->io);
 		}else{
 			if (gpio_is_valid(poweron->io)) {
 				gpio_set_value(poweron->io, !(poweron->enable));
 				msleep(100);
 			}
-
 			if (gpio_is_valid(reset->io)) {
 				gpio_set_value(reset->io, !(reset->enable));
+				msleep(100);
 			}
-
             wifi_power_state = 0;
-			LOG("wifi shut off power.\n");
+			LOG("wifi gpio shut off power.\n");
 		}
     }
 

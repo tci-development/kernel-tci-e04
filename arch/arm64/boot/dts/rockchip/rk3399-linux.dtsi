@@ -46,6 +46,10 @@
 / {
 	compatible = "rockchip,linux", "rockchip,rk3399";
 
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xff1a0000 swiotlb=1 console=ttyFIQ0 rw root=PARTUUID=614e0000-0000 rootfstype=ext4 rootwait";
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -135,15 +139,6 @@
 			logo,mode = "center";
 			charge_logo,mode = "center";
 			connect = <&vopb_out_dsi>;
-		};
-
-		route_dsi1: route-dsi1 {
-			status = "disabled";
-			logo,uboot = "logo.bmp";
-			logo,kernel = "logo_kernel.bmp";
-			logo,mode = "fullscreen";
-			charge_logo,mode = "center";
-			connect = <&vopb_out_dsi1>;
 		};
 
 		route_edp: route-edp {
